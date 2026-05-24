@@ -3,69 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hoja de Control y Seguimiento de Reclamos CCP</title>
+    <title>Hoja de Reclamos CCP - Integración Google Drive</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- SDK de Firebase v11.6.1 -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getFirestore, 
-            doc, 
-            setDoc, 
-            collection, 
-            onSnapshot, 
-            updateDoc 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { 
-            getAuth, 
-            signInWithCustomToken, 
-            signInAnonymously, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        // CONFIGURACIÓN GLOBAL PROPORCIONADA POR EL ENTORNO
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // Inicializar Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Exportar a objeto global window para uso del script tradicional de la app
-        window.FirebaseApp = {
-            db,
-            auth,
-            appId,
-            collection,
-            doc,
-            setDoc,
-            updateDoc,
-            onSnapshot,
-            signInWithCustomToken,
-            signInAnonymously,
-            onAuthStateChanged
-        };
-    </script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
         }
 
         /* Simulación de página Carta en pantalla */
         .letter-page {
             background: white;
-            width: 215.9mm; /* Ancho estándar Carta */
-            min-height: 279.4mm; /* Alto estándar Carta */
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            width: 215.9mm;
+            min-height: 279.4mm;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             box-sizing: border-box;
             position: relative;
             transition: all 0.2s ease;
@@ -90,7 +46,7 @@
                 min-height: 100% !important;
                 box-shadow: none !important;
                 margin: 0 !important;
-                padding: 1.1cm !important; /* Margen óptimo de impresión Carta */
+                padding: 12mm !important;
                 page-break-inside: avoid;
             }
         }
@@ -99,25 +55,27 @@
 <body class="min-h-screen flex flex-col antialiased text-slate-800">
 
     <!-- Encabezado de la Aplicación (No se imprime) -->
-    <header class="no-print bg-slate-900 text-white py-3.5 px-6 shadow-md flex flex-wrap justify-between items-center gap-4 border-b border-slate-800">
+    <header class="no-print bg-slate-950 text-white py-3.5 px-6 shadow-lg flex flex-wrap justify-between items-center gap-4 border-b border-slate-800">
         <div class="flex items-center space-x-3">
-            <div class="bg-indigo-600 p-2 rounded-lg">
-                <i data-lucide="file-text" class="h-5 w-5 text-white"></i>
+            <div class="bg-indigo-600 p-2 rounded-xl">
+                <i data-lucide="hard-drive" class="h-5 w-5 text-white"></i>
             </div>
             <div>
-                <h1 class="font-bold text-base tracking-tight leading-none">Gestor de Calidad CCP</h1>
-                <p class="text-[11px] text-slate-400 mt-1">Control de Reclamos · Sincronizado en la Nube</p>
+                <h1 class="font-bold text-base tracking-tight leading-none flex items-center gap-2">
+                    Gestor CCP <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-normal">Opción 2: Google Drive</span>
+                </h1>
+                <p class="text-[11px] text-slate-400 mt-1">Sincronización mediante Google Apps Script</p>
             </div>
         </div>
         <div class="flex items-center gap-4">
-            <!-- Estado de la sincronización -->
-            <div class="flex items-center gap-2 text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                <span id="sync-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                <span id="sync-text" class="text-slate-300">Conectando...</span>
+            <!-- Estado de la sincronización con Google Drive -->
+            <div id="drive-status-pill" class="flex items-center gap-2 text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <span id="sync-indicator" class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                <span id="sync-text" class="text-slate-300 font-medium">Modo Demo Local</span>
             </div>
-            <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-indigo-500/20">
+            <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center gap-2 transition shadow-md shadow-indigo-500/10">
                 <i data-lucide="printer" class="h-3.5 w-3.5"></i>
-                Imprimir Caso Activo (Carta)
+                Imprimir Caso Activo
             </button>
         </div>
     </header>
@@ -126,21 +84,43 @@
         <!-- Panel de Control y Operaciones (No se imprime) -->
         <aside class="no-print w-full lg:w-96 bg-slate-50 border-r border-slate-200 p-5 flex flex-col gap-5 overflow-y-auto" style="max-height: calc(100vh - 65px);">
             
-            <!-- SECTOR 1: LISTADO DE CASOS EN WORKSPACE -->
+            <!-- PANEL DE CONFIGURACIÓN DE APPS SCRIPT -->
+            <div class="bg-slate-900 text-slate-100 rounded-xl p-4 shadow-sm border border-slate-800 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="settings" class="h-4 w-4 text-indigo-400"></i>
+                        Configurar Google Drive
+                    </h3>
+                    <button onclick="toggleSetupGuide()" class="text-[10px] text-indigo-400 hover:underline font-semibold flex items-center gap-1">
+                        <i data-lucide="help-circle" class="h-3 w-3"></i> Instrucciones
+                    </button>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-semibold text-slate-400">URL de la Web App (Google Apps Script):</label>
+                    <div class="flex gap-1.5">
+                        <input type="password" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
+                               class="flex-1 text-xs bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 font-mono text-slate-300">
+                        <button onclick="saveGasUrl()" class="bg-indigo-600 hover:bg-indigo-500 px-3 rounded text-white text-xs font-bold transition">
+                            Conectar
+                        </button>
+                    </div>
+                    <p id="gas-help-text" class="text-[9px] text-slate-500">Deja en blanco para usar la base de datos de simulación local.</p>
+                </div>
+            </div>
+
+            <!-- SECTOR 1: LISTADO DE CASOS -->
             <div class="space-y-3">
                 <div class="flex justify-between items-center">
                     <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <i data-lucide="folder-open" class="h-3.5 w-3.5 text-indigo-500"></i>
-                        Casos en la Nube (Workspace)
+                        <i data-lucide="database" class="h-3.5 w-3.5 text-indigo-500"></i>
+                        Casos Registrados
                     </h2>
                     <span id="casos-counter" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
                 </div>
                 
-                <div id="lista-casos" class="space-y-2 max-h-40 overflow-y-auto pr-1">
-                    <!-- Cargando estado inicial -->
-                    <div class="text-center py-4 text-xs text-slate-400 italic">
-                        Cargando casos de forma segura...
-                    </div>
+                <div id="lista-casos" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Dinámico -->
                 </div>
             </div>
 
@@ -193,8 +173,8 @@
                         <textarea id="form-resumen" required rows="2" class="w-full px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 resize-none"></textarea>
                     </div>
 
-                    <button type="submit" id="btn-registrar" disabled class="w-full bg-slate-400 text-white font-semibold py-1.5 rounded cursor-not-allowed transition shadow-sm">
-                        Cargando Conexión...
+                    <button type="submit" id="btn-registrar" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded transition shadow-sm cursor-pointer">
+                        Registrar y Sincronizar
                     </button>
                 </form>
             </div>
@@ -204,7 +184,7 @@
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                     <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
                         <i data-lucide="git-commit" class="h-4 w-4 text-indigo-500"></i>
-                        Acciones de Seguimiento (Sección B)
+                        Acciones (Sección B)
                     </h3>
                     <span id="active-case-tag" class="text-[9.5px] font-mono font-bold text-indigo-600">Ninguno</span>
                 </div>
@@ -243,7 +223,7 @@
                     <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded border border-slate-100">
                         <label class="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" id="seg-comunicado" class="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5">
-                            <span class="text-[9.5px] text-slate-600 font-medium">Comunicado Interesado</span>
+                            <span class="text-[9.5px] text-slate-600 font-medium">Comunicar Interesado</span>
                         </label>
                         <label class="flex items-center gap-1.5 cursor-pointer">
                             <input type="checkbox" id="seg-junta" class="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5">
@@ -251,7 +231,7 @@
                         </label>
                     </div>
 
-                    <button type="submit" id="btn-seguimiento" disabled class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-1.5 rounded transition text-xs">
+                    <button type="submit" id="btn-seguimiento" class="w-full bg-slate-850 hover:bg-slate-800 text-white font-semibold py-1.5 rounded transition text-xs">
                         Añadir Línea de Seguimiento
                     </button>
                 </form>
@@ -270,7 +250,7 @@
         </aside>
 
         <!-- Área de visualización de la Hoja de Carta -->
-        <main class="flex-1 p-4 lg:p-8 flex justify-center overflow-auto bg-slate-100">
+        <main class="flex-1 p-4 lg:p-8 flex justify-center overflow-auto bg-slate-200">
             
             <!-- CONTENEDOR DE LA PÁGINA CARTA -->
             <div id="document-sheet" class="letter-page flex flex-col justify-between" style="padding: 12mm; font-size: 11px;">
@@ -292,7 +272,7 @@
                             <!-- BLOQUE DE CONTROL ISO CORPORATIVO -->
                             <div class="bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-md text-left font-mono text-slate-600 uppercase leading-none space-y-1">
                                 <div class="text-[9px] font-bold tracking-tight text-slate-800">Cód: CCP-SAC-FOR-001</div>
-                                <div class="text-[6.8px] font-semibold text-slate-500">Ver: 01</div>
+                                <div class="text-[6.8px] font-semibold text-slate-500">Ver: 02 (G-Drive)</div>
                                 <div class="text-[6.8px] font-semibold text-slate-500">Vigencia: Mayo, 2026</div>
                             </div>
                         </div>
@@ -415,7 +395,7 @@
                                 2. Claves de Categorías
                             </h5>
                             <ul class="space-y-0.5">
-                                <li><strong>Facturación :</strong> Discrepancias en cuotas, cobros, multas o estados de cuenta.</li>
+                                <li><strong>Facturación :</strong> Discrepancias en cuotas, cobros o estados de cuenta.</li>
                                 <li><strong>Infraestructura :</strong> Áreas comunes, fachadas, tuberías o ascensores.</li>
                                 <li><strong>Seguridad :</strong> Incidentes con oficiales, accesos, cámaras.</li>
                                 <li><strong>Convivencia :</strong> Ruidos, mascotas, amenidades.</li>
@@ -430,7 +410,7 @@
                             <ul class="space-y-0.5">
                                 <li><strong>A (Abierto) :</strong> Recibido sin acciones iniciadas.</li>
                                 <li><strong>P (En Proceso) :</strong> Acciones iniciadas en curso.</li>
-                                <li><strong>C (Cerrado) :</strong> Reclamo resuelto y cerrado.</li>
+                                <li><strong>C (Cerrado) :</strong> Reclamo resuelto y cerrado con conformidad.</li>
                             </ul>
                         </div>
                     </div>
@@ -440,19 +420,166 @@
         </main>
     </div>
 
-    <!-- Script de Gestión Interactiva con Firebase integrado -->
+    <!-- MODAL INFORMATIVO: CÓMO CONFIGURAR APPS SCRIPT (No se imprime) -->
+    <div id="setup-modal" class="no-print hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            <div class="p-6 border-b border-slate-150 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="help-circle" class="h-5 w-5 text-indigo-600"></i>
+                    <h3 class="font-bold text-slate-900 text-base">Cómo Conectar a tu Google Drive</h3>
+                </div>
+                <button onclick="toggleSetupGuide()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4 text-xs leading-relaxed text-slate-600">
+                <ol class="list-decimal pl-5 space-y-2">
+                    <li>Ve a tu <strong>Google Drive</strong> y crea una nueva **Carpeta** o simplemente ve a tu cuenta de Google.</li>
+                    <li>Entra en <a href="https://script.google.com" target="_blank" class="text-indigo-600 hover:underline font-semibold">script.google.com</a> y haz clic en <strong>"Nuevo proyecto"</strong>.</li>
+                    <li>Sustituye todo el código por el siguiente bloque de **Google Apps Script** (que leerá y guardará tus datos en una hoja de Google Sheets automáticamente):</li>
+                </ol>
+
+                <div class="relative bg-slate-950 text-slate-200 p-3 rounded-lg border border-slate-800 font-mono text-[10.5px]">
+                    <div class="absolute top-2 right-2">
+                        <button onclick="copyAppsScriptCode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-[9px] font-bold flex items-center gap-1">
+                            <i data-lucide="copy" class="h-2.5 w-2.5"></i> Copiar Código
+                        </button>
+                    </div>
+                    <pre class="overflow-x-auto max-h-52 pr-16" id="apps-script-code-block">
+/*
+ * SCRIPT PARA SPREADSHEET GOOGLE DRIVE - CONTROL RECLAMOS CCP
+ * Copia y pega esto íntegramente en script.google.com
+ */
+function doGet(e) {
+  var sheet = getOrCreateSheet();
+  var rows = sheet.getDataRange().getValues();
+  var data = [];
+  
+  // Omitir fila de encabezado (index 0)
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    if (!row[0]) continue;
+    data.push({
+      consecutivo: row[0],
+      fecha: row[1],
+      filial: row[2].toString(),
+      condicion: row[3],
+      nombre: row[4],
+      referencia: row[5],
+      categoria: row[6],
+      resumen: row[7],
+      estatus: row[8],
+      fechaCierre: row[9],
+      seguimientos: JSON.parse(row[10] || "[]")
+    });
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var params = JSON.parse(e.postData.contents);
+    var sheet = getOrCreateSheet();
+    var rows = sheet.getDataRange().getValues();
+    
+    var targetConsecutivo = params.consecutivo;
+    var rowNumber = -1;
+    
+    // Buscar si ya existe el consecutivo para actualizarlo
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][0] === targetConsecutivo) {
+        rowNumber = i + 1; // Apps Script es index 1
+        break;
+      }
+    }
+    
+    var rowData = [
+      params.consecutivo,
+      params.fecha,
+      params.filial,
+      params.condicion,
+      params.nombre,
+      params.referencia,
+      params.categoria,
+      params.resumen,
+      params.estatus,
+      params.fechaCierre,
+      JSON.stringify(params.seguimientos || [])
+    ];
+    
+    if (rowNumber !== -1) {
+      // Actualizar fila existente
+      sheet.getRange(rowNumber, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      // Insertar nuevo reclamo
+      sheet.appendRow(rowData);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getOrCreateSheet() {
+  var docName = "Control_Reclamos_CCP_DB";
+  var files = DriveApp.getFilesByName(docName);
+  var ss;
+  if (files.hasNext()) {
+    ss = SpreadsheetApp.open(files.next());
+  } else {
+    ss = SpreadsheetApp.create(docName);
+    var sheet = ss.getActiveSheet();
+    sheet.appendRow([
+      "Consecutivo", "Fecha Rec.", "N° Filial", "Condición", 
+      "Nombre Reclamante", "Referencia", "Categoría", "Resumen del Reclamo",
+      "Estatus Actual", "Fecha Cierre", "Seguimientos (JSON)"
+    ]);
+  }
+  return ss.getActiveSheet();
+}</pre>
+                </div>
+
+                <ol class="list-decimal pl-5 space-y-2 start-[4]">
+                    <li>Haz clic en el botón <strong>"Desplegar"</strong> (arriba a la derecha) &gt; <strong>"Nueva implementación"</strong>.</li>
+                    <li>Selecciona el tipo de implementación como <strong>"Aplicación web"</strong>.</li>
+                    <li>Configura las opciones obligatorias:
+                        <ul class="list-disc pl-5 mt-1">
+                            <li><strong>Ejecutar como:</strong> Tu cuenta (Yo).</li>
+                            <li><strong>Quién tiene acceso:</strong> Cualquiera. *(Indispensable para comunicar tu App con Google Drive)*.</li>
+                        </ul>
+                    </li>
+                    <li>Haz clic en <strong>Desplegar</strong>, aprueba los permisos que te solicite Google para leer/escribir en tus hojas de cálculo, y **copia la URL de la Aplicación web** resultante.</li>
+                    <li>Pega la URL de tu script en el campo **Configurar Google Drive** de arriba a la izquierda de esta página y pulsa **Conectar**. ¡Eso es todo!</li>
+                </ol>
+            </div>
+            
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 rounded-b-2xl">
+                <button onclick="toggleSetupGuide()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded text-xs transition">
+                    Entendido, Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de lógica de la aplicación híbrida -->
     <script>
-        // Array local que actuará como réplica de Firestore (SSOT)
+        // Array local que simula o replica la base de datos
         let database = [];
         let casoActivoId = null;
-        let dbReference = null;
-        let dbUnsubscribe = null;
+        let gasUrl = localStorage.getItem('gas_web_app_url') || "";
 
-        // Elementos de Interfaz
+        // UI references
         const syncIndicator = document.getElementById('sync-indicator');
         const syncText = document.getElementById('sync-text');
-        const btnRegistrar = document.getElementById('btn-registrar');
-        const btnSeguimiento = document.getElementById('btn-seguimiento');
+        const driveStatusPill = document.getElementById('drive-status-pill');
+        const gasUrlInput = document.getElementById('gas-url-input');
         const listaCasosElement = document.getElementById('lista-casos');
         const activeCaseTag = document.getElementById('active-case-tag');
         const casosCounter = document.getElementById('casos-counter');
@@ -464,122 +591,116 @@
         const tableSeccionA = document.getElementById('table-seccion-a');
         const tableSeccionB = document.getElementById('table-seccion-b');
 
-        // Escuchar el cargado de la ventana y conectar Firebase
-        window.onload = async function() {
+        // Al iniciar la página
+        window.onload = function() {
             lucide.createIcons();
             setTodayOnDatePicker();
             
-            // Inicializar escala
+            // Inicializar Input de Configuración si ya existe guardado
+            if (gasUrl) {
+                gasUrlInput.value = gasUrl;
+            }
+
+            // Inicializar Ajuste de Escala
             const fontSizeSlider = document.getElementById('font-size');
             const fontSizeVal = document.getElementById('font-size-val');
             const documentSheet = document.getElementById('document-sheet');
-
             fontSizeSlider.addEventListener('input', (e) => {
                 const size = e.target.value;
                 fontSizeVal.textContent = `${size}px`;
                 documentSheet.style.fontSize = `${size}px`;
             });
 
-            // Conectar Firebase
-            if (window.FirebaseApp) {
-                try {
-                    const { 
-                        auth, 
-                        db, 
-                        appId, 
-                        signInAnonymously, 
-                        onAuthStateChanged,
-                        collection
-                    } = window.FirebaseApp;
-
-                    // Autenticación primero
-                    await signInAnonymously(auth);
-
-                    onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
-                            syncText.textContent = "Sincronizado";
-                            btnRegistrar.disabled = false;
-                            btnRegistrar.textContent = "Registrar y Guardar";
-                            btnRegistrar.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded transition shadow-sm cursor-pointer";
-                            btnSeguimiento.disabled = false;
-
-                            // Iniciar Escucha de Datos en la ruta estricta (Regla 1 y 2)
-                            const collectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'reclamos_ccp');
-                            dbReference = collectionRef;
-
-                            // onSnapshot con callbacks de éxito y error requeridos
-                            dbUnsubscribe = window.FirebaseApp.onSnapshot(collectionRef, (snapshot) => {
-                                let list = [];
-                                snapshot.forEach((doc) => {
-                                    list.push(doc.data());
-                                });
-
-                                // Si no hay registros iniciales, creamos el de muestra
-                                if (list.length === 0) {
-                                    crearRegistroInicial();
-                                } else {
-                                    // Ordenar localmente por consecutivo (Regla 2: Sin compound queries)
-                                    list.sort((a, b) => a.consecutivo.localeCompare(b.consecutivo));
-                                    database = list;
-
-                                    if (!casoActivoId && database.length > 0) {
-                                        casoActivoId = database[0].consecutivo;
-                                        activeCaseTag.textContent = casoActivoId;
-                                    }
-                                    renderCasos();
-                                }
-                            }, (error) => {
-                                console.error("Error en Snapshot: ", error);
-                                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
-                                syncText.textContent = "Error de Red";
-                            });
-
-                        } else {
-                            syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
-                            syncText.textContent = "Sin Autenticar";
-                        }
-                    });
-
-                } catch (e) {
-                    console.error("Fallo de Inicialización Firebase: ", e);
-                    syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
-                    syncText.textContent = "Error de Conexión";
-                }
-            }
+            // Cargar datos
+            recargarBaseDeDatos();
         };
 
-        // Crear registro inicial de demostración en la base de datos
-        async function crearRegistroInicial() {
-            if (!dbReference) return;
-            const primerCaso = {
-                consecutivo: "SAC-REC-2026-001",
-                fecha: "24/05/2026",
-                filial: "84",
-                condicion: "Propietario",
-                nombre: "Carlos Mendoza",
-                referencia: "Correo (Cobro)",
-                categoria: "Facturación",
-                resumen: "Error en desglose de cuota mantenimiento.",
-                estatus: "En Proceso",
-                fechaCierre: "--/--/----",
-                seguimientos: [
-                    {
-                        fecha: "24/05/2026",
-                        acciones: "Revisión con contabilidad.",
-                        resultados: "Se aplicó nota de crédito correctiva.",
-                        notas: "Se validará el reflejo en el próximo estado de cuenta del condominio.",
-                        comunicado: true,
-                        junta: true
-                    }
-                ]
-            };
-
-            const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', primerCaso.consecutivo);
-            await window.FirebaseApp.setDoc(docRef, primerCaso);
+        // Guardar URL del script en almacenamiento local
+        function saveGasUrl() {
+            const val = gasUrlInput.value.trim();
+            gasUrl = val;
+            localStorage.setItem('gas_web_app_url', val);
+            recargarBaseDeDatos();
         }
 
-        // Renderizar Lista Lateral
+        // Carga la base de datos (Desde Google Drive o desde LocalStorage si no está configurada la URL)
+        async function recargarBaseDeDatos() {
+            actualizarEstadoUI("Cargando...", "bg-amber-500 animate-pulse");
+
+            if (gasUrl) {
+                try {
+                    // Consultar Google Apps Script en modo de Producción (GET)
+                    const response = await fetch(gasUrl);
+                    if (!response.ok) throw new Error("Respuesta de red no satisfactoria");
+                    const data = await response.json();
+                    
+                    // Asegurar orden local por consecutivos
+                    data.sort((a, b) => a.consecutivo.localeCompare(b.consecutivo));
+                    database = data;
+                    
+                    // Seleccionar el primer caso por defecto si no hay uno activo
+                    if (database.length > 0) {
+                        if (!casoActivoId || !database.some(c => c.consecutivo === casoActivoId)) {
+                            casoActivoId = database[0].consecutivo;
+                        }
+                    }
+                    actualizarEstadoUI("Conectado a Google Drive", "bg-emerald-500");
+                } catch (e) {
+                    console.error("Fallo de conexión GAS, usando demo:", e);
+                    actualizarEstadoUI("Fallo de Conexión GAS (Demo)", "bg-rose-500");
+                    cargarDemoLocal();
+                }
+            } else {
+                actualizarEstadoUI("Modo Demo Local", "bg-blue-500");
+                cargarDemoLocal();
+            }
+
+            renderCasos();
+        }
+
+        // Cargar Base de datos local (LocalStorage) si no hay Apps Script configurado
+        function cargarDemoLocal() {
+            const dataStr = localStorage.getItem('reclamos_ccp_demo_db');
+            if (dataStr) {
+                database = JSON.parse(dataStr);
+            } else {
+                // Caso inicial de prueba
+                database = [
+                    {
+                        consecutivo: "SAC-REC-2026-001",
+                        fecha: "24/05/2026",
+                        filial: "84",
+                        condicion: "Propietario",
+                        nombre: "Carlos Mendoza",
+                        referencia: "Correo (Cobro)",
+                        categoria: "Facturación",
+                        resumen: "Error en desglose de cuota mantenimiento.",
+                        estatus: "En Proceso",
+                        fechaCierre: "--/--/----",
+                        seguimientos: [
+                            {
+                                fecha: "24/05/2026",
+                                acciones: "Revisión con contabilidad.",
+                                resultados: "Se aplicó nota de crédito correctiva.",
+                                notas: "Se validará el reflejo en el próximo estado de cuenta del condominio.",
+                                comunicado: true,
+                                junta: true
+                            }
+                        ]
+                    }
+                ];
+                guardarDemoLocal();
+            }
+            if (database.length > 0 && !casoActivoId) {
+                casoActivoId = database[0].consecutivo;
+            }
+        }
+
+        function guardarDemoLocal() {
+            localStorage.setItem('reclamos_ccp_demo_db', JSON.stringify(database));
+        }
+
+        // Renderizado del panel lateral de casos
         function renderCasos() {
             listaCasosElement.innerHTML = '';
             casosCounter.textContent = database.length;
@@ -617,30 +738,29 @@
             renderCasos();
         }
 
-        // Renderizar el caso activo en la Hoja Carta
+        // Renderizar el caso activo en la Hoja Carta estructurada
         function renderHojaCarta() {
             const caso = database.find(c => c.consecutivo === casoActivoId);
             if (!caso) {
-                // Caso por defecto vacío
-                tableSeccionA.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Seleccione un caso</td></tr>`;
-                tableSeccionB.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Seleccione un caso</td></tr>`;
+                tableSeccionA.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Seleccione un caso o registre uno nuevo</td></tr>`;
+                tableSeccionB.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Seleccione un caso o registre uno nuevo</td></tr>`;
                 return;
             }
 
-            // Actualizar KPIs de Sección C
+            // Actualizar Sección C: KPI Panel
             kpiConsecutivo.textContent = caso.consecutivo;
             kpiFechaIngreso.textContent = caso.fecha;
             kpiCategoria.textContent = caso.categoria;
             kpiEstatus.textContent = caso.estatus;
             kpiFechaCierre.textContent = caso.fechaCierre;
 
-            // Estilos del Estatus KPI
+            // Colorear KPI
             kpiEstatus.className = "text-[10px] font-bold mt-1 uppercase";
             if (caso.estatus === "Abierto") kpiEstatus.classList.add("text-blue-600");
             else if (caso.estatus === "En Proceso") kpiEstatus.classList.add("text-amber-600");
             else if (caso.estatus === "Cerrado") kpiEstatus.classList.add("text-emerald-600");
 
-            // Render Sección A
+            // Inyectar datos en Sección A
             tableSeccionA.innerHTML = `
                 <tr class="bg-white">
                     <td class="p-2 border border-slate-200 font-mono font-bold text-slate-900">${caso.consecutivo}</td>
@@ -658,12 +778,12 @@
                 </tr>
             `;
 
-            // Render Sección B
+            // Inyectar datos en Sección B
             if (!caso.seguimientos || caso.seguimientos.length === 0) {
                 tableSeccionB.innerHTML = `
                     <tr class="bg-white">
                         <td colspan="6" class="p-4 border border-slate-200 text-center text-slate-400 italic">
-                            No se han registrado acciones de seguimiento para este caso todavía.
+                            No se han registrado acciones de seguimiento para este caso todavía. Use el panel lateral para registrar el progreso.
                         </td>
                     </tr>
                 `;
@@ -691,11 +811,9 @@
             }
         }
 
-        // Registrar un Reclamo nuevo (Sección A) y guardar en Firestore
+        // Registrar reclamo nuevo (Sección A)
         async function registrarReclamo(event) {
             event.preventDefault();
-
-            if (!dbReference) return;
 
             const filial = document.getElementById('form-filial').value;
             const condicion = document.getElementById('form-condicion').value;
@@ -704,14 +822,12 @@
             const categoria = document.getElementById('form-categoria').value;
             const resumen = document.getElementById('form-resumen').value;
 
-            // Formatear Fecha actual
             const hoy = new Date();
             const dia = String(hoy.getDate()).padStart(2, '0');
             const mes = String(hoy.getMonth() + 1).padStart(2, '0');
             const anio = hoy.getFullYear();
             const fechaString = `${dia}/${mes}/${anio}`;
 
-            // Auto-generación de Consecutivo basada en tamaño real
             const correlativo = String(database.length + 1).padStart(3, '0');
             const nuevoConsecutivo = `SAC-REC-2026-${correlativo}`;
 
@@ -729,30 +845,62 @@
                 seguimientos: []
             };
 
-            // Guardar directamente en la nube
-            try {
-                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
-                syncText.textContent = "Guardando...";
-                
-                const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', nuevoConsecutivo);
-                await window.FirebaseApp.setDoc(docRef, nuevoCaso);
-                
+            actualizarEstadoUI("Sincronizando...", "bg-amber-500 animate-pulse");
+
+            if (gasUrl) {
+                // Sincronizar en Google Drive mediante Apps Script POST (sin no-cors para poder validar el estatus)
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        body: JSON.stringify(nuevoCaso)
+                    });
+                    
+                    if (response.ok) {
+                        casoActivoId = nuevoConsecutivo;
+                        await recargarBaseDeDatos();
+                    } else {
+                        throw new Error("Respuesta inválida del servidor");
+                    }
+                } catch(e) {
+                    console.error("Fallo de guardado en GAS, reintentando con fallback seguro:", e);
+                    // Fallback en caso de que CORS impida el JSON de retorno directo
+                    enviarConFallbackOpaco(nuevoCaso, nuevoConsecutivo);
+                }
+            } else {
+                // Modo Demo Local
+                database.push(nuevoCaso);
+                guardarDemoLocal();
                 casoActivoId = nuevoConsecutivo;
-                activeCaseTag.textContent = nuevoConsecutivo;
-                
-                document.getElementById('form-reclamo').reset();
+                actualizarEstadoUI("Caso Guardado en Local", "bg-blue-500");
+                renderCasos();
+            }
+
+            document.getElementById('form-reclamo').reset();
+        }
+
+        // Función auxiliar en caso de políticas estrictas de CORS del navegador del cliente
+        async function enviarConFallbackOpaco(objeto, idDestino) {
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(objeto)
+                });
+                setTimeout(() => {
+                    casoActivoId = idDestino;
+                    recargarBaseDeDatos();
+                }, 1000);
             } catch (err) {
-                console.error("Error al guardar reclamo: ", err);
-                alert("Ocurrió un error al guardar en la base de datos.");
+                actualizarEstadoUI("Error al guardar en GAS", "bg-rose-500");
             }
         }
 
-        // Añadir línea de seguimiento (Sección B) y actualizar Firestore
+        // Agregar fila de seguimiento (Sección B)
         async function agregarSeguimiento(event) {
             event.preventDefault();
 
             const caso = database.find(c => c.consecutivo === casoActivoId);
-            if (!caso || !dbReference) return;
+            if (!caso) return;
 
             const rawDate = document.getElementById('seg-fecha').value;
             const acciones = document.getElementById('seg-acciones').value;
@@ -762,7 +910,6 @@
             const junta = document.getElementById('seg-junta').checked;
             const nuevoEstatus = document.getElementById('seg-estatus').value;
 
-            // Formatear fecha
             let fechaUpdate = "--/--/----";
             if (rawDate) {
                 const parts = rawDate.split('-');
@@ -771,19 +918,16 @@
                 }
             }
 
-            // Crear array de seguimientos localmente
             const seguimientosActualizados = [...(caso.seguimientos || [])];
             seguimientosActualizados.push({
                 fecha: fechaUpdate,
                 acciones,
                 resultados,
-                notes: notas, // Guardar bajo estándar para evitar colisiones
-                notas: notas,
+                notas,
                 comunicado,
                 junta
             });
 
-            // Determinar fecha de cierre
             let fechaCierreFinal = caso.fechaCierre;
             if (nuevoEstatus === 'Cerrado') {
                 fechaCierreFinal = fechaUpdate;
@@ -791,27 +935,51 @@
                 fechaCierreFinal = "--/--/----";
             }
 
-            // Actualizar en Firestore (Actualización atómica del documento del caso)
-            try {
-                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
-                syncText.textContent = "Actualizando...";
+            const casoModificado = {
+                ...caso,
+                seguimientos: seguimientosActualizados,
+                estatus: nuevoEstatus,
+                fechaCierre: fechaCierreFinal
+            };
 
-                const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', casoActivoId);
-                await window.FirebaseApp.updateDoc(docRef, {
-                    seguimientos: seguimientosActualizados,
-                    estatus: nuevoEstatus,
-                    fechaCierre: fechaCierreFinal
-                });
+            actualizarEstadoUI("Actualizando...", "bg-amber-500 animate-pulse");
 
-                document.getElementById('form-seguimiento').reset();
-                setTodayOnDatePicker();
-            } catch (err) {
-                console.error("Error al actualizar seguimiento: ", err);
-                alert("Ocurrió un error al registrar la actualización en la nube.");
+            if (gasUrl) {
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        body: JSON.stringify(casoModificado)
+                    });
+                    if (response.ok) {
+                        await recargarBaseDeDatos();
+                    } else {
+                        throw new Error("Error en respuesta");
+                    }
+                } catch(e) {
+                    console.error("Fallo de actualización en GAS: ", e);
+                    enviarConFallbackOpaco(casoModificado, casoActivoId);
+                }
+            } else {
+                // Modo Demo
+                const index = database.findIndex(c => c.consecutivo === casoActivoId);
+                if (index !== -1) {
+                    database[index] = casoModificado;
+                    guardarDemoLocal();
+                }
+                actualizarEstadoUI("Modo Demo Local", "bg-blue-500");
+                renderCasos();
             }
+
+            document.getElementById('form-seguimiento').reset();
+            setTodayOnDatePicker();
         }
 
-        // Utilidades
+        // Utilidades UI
+        function actualizarEstadoUI(text, indicatorClass) {
+            syncText.textContent = text;
+            syncIndicator.className = `w-2.5 h-2.5 rounded-full ${indicatorClass}`;
+        }
+
         function setTodayOnDatePicker() {
             const dateInput = document.getElementById('seg-fecha');
             if (dateInput) {
@@ -821,6 +989,29 @@
                 const dd = String(hoy.getDate()).padStart(2, '0');
                 dateInput.value = `${yyyy}-${mm}-${dd}`;
             }
+        }
+
+        // Modal de Guía de Despliegue de Apps Script
+        function toggleSetupGuide() {
+            const modal = document.getElementById('setup-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function copyAppsScriptCode() {
+            const textToCopy = document.getElementById('apps-script-code-block').innerText;
+            
+            // Método robusto para portapapeles
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                document.execCommand('copy');
+                alert("¡Código copiado al portapapeles! Listo para pegar en script.google.com");
+            } catch (err) {
+                console.error("No se pudo copiar de manera automática.", err);
+            }
+            document.body.removeChild(tempTextArea);
         }
     </script>
 </body>
