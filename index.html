@@ -8,6 +8,50 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- SDK de Firebase v11.6.1 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            collection, 
+            onSnapshot, 
+            updateDoc 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { 
+            getAuth, 
+            signInWithCustomToken, 
+            signInAnonymously, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // CONFIGURACIÓN GLOBAL PROPORCIONADA POR EL ENTORNO
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Exportar a objeto global window para uso del script tradicional de la app
+        window.FirebaseApp = {
+            db,
+            auth,
+            appId,
+            collection,
+            doc,
+            setDoc,
+            updateDoc,
+            onSnapshot,
+            signInWithCustomToken,
+            signInAnonymously,
+            onAuthStateChanged
+        };
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap');
         
@@ -62,10 +106,15 @@
             </div>
             <div>
                 <h1 class="font-bold text-base tracking-tight leading-none">Gestor de Calidad CCP</h1>
-                <p class="text-[11px] text-slate-400 mt-1">Control de Reclamos · Condominio Condado del Parque</p>
+                <p class="text-[11px] text-slate-400 mt-1">Control de Reclamos · Sincronizado en la Nube</p>
             </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-4">
+            <!-- Estado de la sincronización -->
+            <div class="flex items-center gap-2 text-xs bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                <span id="sync-indicator" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="sync-text" class="text-slate-300">Conectando...</span>
+            </div>
             <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-indigo-500/20">
                 <i data-lucide="printer" class="h-3.5 w-3.5"></i>
                 Imprimir Caso Activo (Carta)
@@ -82,13 +131,16 @@
                 <div class="flex justify-between items-center">
                     <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                         <i data-lucide="folder-open" class="h-3.5 w-3.5 text-indigo-500"></i>
-                        Casos en el Workspace
+                        Casos en la Nube (Workspace)
                     </h2>
-                    <span id="casos-counter" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">1</span>
+                    <span id="casos-counter" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
                 </div>
                 
                 <div id="lista-casos" class="space-y-2 max-h-40 overflow-y-auto pr-1">
-                    <!-- Casos dinámicos aquí -->
+                    <!-- Cargando estado inicial -->
+                    <div class="text-center py-4 text-xs text-slate-400 italic">
+                        Cargando casos de forma segura...
+                    </div>
                 </div>
             </div>
 
@@ -141,8 +193,8 @@
                         <textarea id="form-resumen" required rows="2" class="w-full px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 resize-none"></textarea>
                     </div>
 
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded transition shadow-sm">
-                        Registrar y Generar Consecutivo
+                    <button type="submit" id="btn-registrar" disabled class="w-full bg-slate-400 text-white font-semibold py-1.5 rounded cursor-not-allowed transition shadow-sm">
+                        Cargando Conexión...
                     </button>
                 </form>
             </div>
@@ -158,6 +210,21 @@
                 </div>
 
                 <form id="form-seguimiento" class="space-y-2.5 text-xs" onsubmit="agregarSeguimiento(event)">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Fecha Act.</label>
+                            <input type="date" id="seg-fecha" required class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Actualizar Estatus</label>
+                            <select id="seg-estatus" class="w-full px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50">
+                                <option value="Abierto">Abierto</option>
+                                <option value="En Proceso" selected>En Proceso</option>
+                                <option value="Cerrado">Cerrado</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-[10px] font-semibold text-slate-500 mb-1">Acciones Ejecutadas</label>
                         <input type="text" id="seg-acciones" required class="w-full px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50">
@@ -184,21 +251,9 @@
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Actualizar Estatus</label>
-                            <select id="seg-estatus" class="w-full px-2 py-1.5 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50">
-                                <option value="Abierto">Abierto</option>
-                                <option value="En Proceso">En Proceso</option>
-                                <option value="Cerrado">Cerrado</option>
-                            </select>
-                        </div>
-                        <div class="flex items-end">
-                            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-1.5 rounded transition text-xs">
-                                Añadir Línea
-                            </button>
-                        </div>
-                    </div>
+                    <button type="submit" id="btn-seguimiento" disabled class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-1.5 rounded transition text-xs">
+                        Añadir Línea de Seguimiento
+                    </button>
                 </form>
             </div>
             
@@ -262,23 +317,23 @@
                         <div class="grid grid-cols-5 gap-2 text-center">
                             <div class="bg-white border border-slate-200 p-2 rounded shadow-sm">
                                 <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">N° Consecutivo (ISO)</div>
-                                <div id="kpi-consecutivo" class="text-[10px] font-mono font-bold text-indigo-700 mt-1">SAC-REC-2026-001</div>
+                                <div id="kpi-consecutivo" class="text-[10px] font-mono font-bold text-indigo-700 mt-1">--</div>
                             </div>
                             <div class="bg-white border border-slate-200 p-2 rounded shadow-sm">
                                 <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">Fecha de Ingreso</div>
-                                <div id="kpi-fecha-ingreso" class="text-[10px] font-mono font-bold text-slate-800 mt-1">24/05/2026</div>
+                                <div id="kpi-fecha-ingreso" class="text-[10px] font-mono font-bold text-slate-800 mt-1">--</div>
                             </div>
                             <div class="bg-white border border-slate-200 p-2 rounded shadow-sm">
                                 <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">Categoría</div>
-                                <div id="kpi-categoria" class="text-[9.5px] font-bold text-emerald-700 mt-1 leading-none">Facturación</div>
+                                <div id="kpi-categoria" class="text-[9.5px] font-bold text-emerald-700 mt-1 leading-none">--</div>
                             </div>
                             <div class="bg-white border border-slate-200 p-2 rounded shadow-sm">
                                 <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">Estatus Actual</div>
-                                <div id="kpi-estatus" class="text-[10px] font-bold text-amber-600 mt-1 uppercase">En Proceso</div>
+                                <div id="kpi-estatus" class="text-[10px] font-bold text-amber-600 mt-1 uppercase">--</div>
                             </div>
                             <div class="bg-white border border-slate-200 p-2 rounded shadow-sm">
                                 <div class="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">Fecha Cierre</div>
-                                <div id="kpi-fecha-cierre" class="text-[10px] font-mono font-bold text-slate-800 mt-1">--/--/----</div>
+                                <div id="kpi-fecha-cierre" class="text-[10px] font-mono font-bold text-slate-800 mt-1">--</div>
                             </div>
                         </div>
                     </div>
@@ -317,7 +372,7 @@
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="bg-slate-800 text-white text-[9px] font-bold uppercase tracking-wider">
-                                        <th class="p-2 border border-slate-700">Consecutivo</th>
+                                        <th class="p-2 border border-slate-700">Fecha Act.</th>
                                         <th class="p-2 border border-slate-700 w-1/3">Acciones Ejecutadas</th>
                                         <th class="p-2 border border-slate-700 w-1/3">Resultados Obtenidos</th>
                                         <th class="p-2 border border-slate-700 w-1/4">Notas/Comentarios</th>
@@ -385,14 +440,119 @@
         </main>
     </div>
 
-    <!-- Script de Gestión Interactiva -->
+    <!-- Script de Gestión Interactiva con Firebase integrado -->
     <script>
-        // Inicializar iconos
-        lucide.createIcons();
+        // Array local que actuará como réplica de Firestore (SSOT)
+        let database = [];
+        let casoActivoId = null;
+        let dbReference = null;
+        let dbUnsubscribe = null;
 
-        // Base de datos de casos en memoria
-        let database = [
-            {
+        // Elementos de Interfaz
+        const syncIndicator = document.getElementById('sync-indicator');
+        const syncText = document.getElementById('sync-text');
+        const btnRegistrar = document.getElementById('btn-registrar');
+        const btnSeguimiento = document.getElementById('btn-seguimiento');
+        const listaCasosElement = document.getElementById('lista-casos');
+        const activeCaseTag = document.getElementById('active-case-tag');
+        const casosCounter = document.getElementById('casos-counter');
+        const kpiConsecutivo = document.getElementById('kpi-consecutivo');
+        const kpiFechaIngreso = document.getElementById('kpi-fecha-ingreso');
+        const kpiCategoria = document.getElementById('kpi-categoria');
+        const kpiEstatus = document.getElementById('kpi-estatus');
+        const kpiFechaCierre = document.getElementById('kpi-fecha-cierre');
+        const tableSeccionA = document.getElementById('table-seccion-a');
+        const tableSeccionB = document.getElementById('table-seccion-b');
+
+        // Escuchar el cargado de la ventana y conectar Firebase
+        window.onload = async function() {
+            lucide.createIcons();
+            setTodayOnDatePicker();
+            
+            // Inicializar escala
+            const fontSizeSlider = document.getElementById('font-size');
+            const fontSizeVal = document.getElementById('font-size-val');
+            const documentSheet = document.getElementById('document-sheet');
+
+            fontSizeSlider.addEventListener('input', (e) => {
+                const size = e.target.value;
+                fontSizeVal.textContent = `${size}px`;
+                documentSheet.style.fontSize = `${size}px`;
+            });
+
+            // Conectar Firebase
+            if (window.FirebaseApp) {
+                try {
+                    const { 
+                        auth, 
+                        db, 
+                        appId, 
+                        signInAnonymously, 
+                        onAuthStateChanged,
+                        collection
+                    } = window.FirebaseApp;
+
+                    // Autenticación primero
+                    await signInAnonymously(auth);
+
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+                            syncText.textContent = "Sincronizado";
+                            btnRegistrar.disabled = false;
+                            btnRegistrar.textContent = "Registrar y Guardar";
+                            btnRegistrar.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 rounded transition shadow-sm cursor-pointer";
+                            btnSeguimiento.disabled = false;
+
+                            // Iniciar Escucha de Datos en la ruta estricta (Regla 1 y 2)
+                            const collectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'reclamos_ccp');
+                            dbReference = collectionRef;
+
+                            // onSnapshot con callbacks de éxito y error requeridos
+                            dbUnsubscribe = window.FirebaseApp.onSnapshot(collectionRef, (snapshot) => {
+                                let list = [];
+                                snapshot.forEach((doc) => {
+                                    list.push(doc.data());
+                                });
+
+                                // Si no hay registros iniciales, creamos el de muestra
+                                if (list.length === 0) {
+                                    crearRegistroInicial();
+                                } else {
+                                    // Ordenar localmente por consecutivo (Regla 2: Sin compound queries)
+                                    list.sort((a, b) => a.consecutivo.localeCompare(b.consecutivo));
+                                    database = list;
+
+                                    if (!casoActivoId && database.length > 0) {
+                                        casoActivoId = database[0].consecutivo;
+                                        activeCaseTag.textContent = casoActivoId;
+                                    }
+                                    renderCasos();
+                                }
+                            }, (error) => {
+                                console.error("Error en Snapshot: ", error);
+                                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                                syncText.textContent = "Error de Red";
+                            });
+
+                        } else {
+                            syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                            syncText.textContent = "Sin Autenticar";
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("Fallo de Inicialización Firebase: ", e);
+                    syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+                    syncText.textContent = "Error de Conexión";
+                }
+            }
+        };
+
+        // Crear registro inicial de demostración en la base de datos
+        async function crearRegistroInicial() {
+            if (!dbReference) return;
+            const primerCaso = {
                 consecutivo: "SAC-REC-2026-001",
                 fecha: "24/05/2026",
                 filial: "84",
@@ -405,6 +565,7 @@
                 fechaCierre: "--/--/----",
                 seguimientos: [
                     {
+                        fecha: "24/05/2026",
                         acciones: "Revisión con contabilidad.",
                         resultados: "Se aplicó nota de crédito correctiva.",
                         notas: "Se validará el reflejo en el próximo estado de cuenta del condominio.",
@@ -412,36 +573,13 @@
                         junta: true
                     }
                 ]
-            }
-        ];
+            };
 
-        let casoActivoId = "SAC-REC-2026-001";
+            const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', primerCaso.consecutivo);
+            await window.FirebaseApp.setDoc(docRef, primerCaso);
+        }
 
-        // Elementos de la UI
-        const listaCasosElement = document.getElementById('lista-casos');
-        const activeCaseTag = document.getElementById('active-case-tag');
-        const casosCounter = document.getElementById('casos-counter');
-        const kpiConsecutivo = document.getElementById('kpi-consecutivo');
-        const kpiFechaIngreso = document.getElementById('kpi-fecha-ingreso');
-        const kpiCategoria = document.getElementById('kpi-categoria');
-        const kpiEstatus = document.getElementById('kpi-estatus');
-        const kpiFechaCierre = document.getElementById('kpi-fecha-cierre');
-        
-        const tableSeccionA = document.getElementById('table-seccion-a');
-        const tableSeccionB = document.getElementById('table-seccion-b');
-
-        // Control de Ajustes Escala
-        const fontSizeSlider = document.getElementById('font-size');
-        const fontSizeVal = document.getElementById('font-size-val');
-        const documentSheet = document.getElementById('document-sheet');
-
-        fontSizeSlider.addEventListener('input', (e) => {
-            const size = e.target.value;
-            fontSizeVal.textContent = `${size}px`;
-            documentSheet.style.fontSize = `${size}px`;
-        });
-
-        // Cargar Casos
+        // Renderizar Lista Lateral
         function renderCasos() {
             listaCasosElement.innerHTML = '';
             casosCounter.textContent = database.length;
@@ -470,7 +608,7 @@
                 listaCasosElement.appendChild(item);
             });
 
-            renderHojaA4();
+            renderHojaCarta();
         }
 
         function seleccionarCaso(id) {
@@ -480,9 +618,14 @@
         }
 
         // Renderizar el caso activo en la Hoja Carta
-        function renderHojaA4() {
-            const caso = database.find(c => c.consecutivo === casoActivoId) || database[0];
-            if (!caso) return;
+        function renderHojaCarta() {
+            const caso = database.find(c => c.consecutivo === casoActivoId);
+            if (!caso) {
+                // Caso por defecto vacío
+                tableSeccionA.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Seleccione un caso</td></tr>`;
+                tableSeccionB.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Seleccione un caso</td></tr>`;
+                return;
+            }
 
             // Actualizar KPIs de Sección C
             kpiConsecutivo.textContent = caso.consecutivo;
@@ -515,8 +658,8 @@
                 </tr>
             `;
 
-            // Render Sección B (Soporta múltiples acciones agregadas dinámicamente)
-            if (caso.seguimientos.length === 0) {
+            // Render Sección B
+            if (!caso.seguimientos || caso.seguimientos.length === 0) {
                 tableSeccionB.innerHTML = `
                     <tr class="bg-white">
                         <td colspan="6" class="p-4 border border-slate-200 text-center text-slate-400 italic">
@@ -527,7 +670,7 @@
             } else {
                 tableSeccionB.innerHTML = caso.seguimientos.map(seg => `
                     <tr class="bg-white hover:bg-slate-50">
-                        <td class="p-2 border border-slate-200 font-mono font-bold text-slate-900">${caso.consecutivo}</td>
+                        <td class="p-2 border border-slate-200 font-mono font-bold text-slate-900">${seg.fecha}</td>
                         <td class="p-2 border border-slate-200 leading-snug">${seg.acciones}</td>
                         <td class="p-2 border border-slate-200 text-slate-600 leading-snug">${seg.resultados}</td>
                         <td class="p-2 border border-slate-200 text-slate-500 italic leading-snug">${seg.notas}</td>
@@ -548,9 +691,11 @@
             }
         }
 
-        // Registrar un Reclamo nuevo (Sección A)
-        function registrarReclamo(event) {
+        // Registrar un Reclamo nuevo (Sección A) y guardar en Firestore
+        async function registrarReclamo(event) {
             event.preventDefault();
+
+            if (!dbReference) return;
 
             const filial = document.getElementById('form-filial').value;
             const condicion = document.getElementById('form-condicion').value;
@@ -559,14 +704,14 @@
             const categoria = document.getElementById('form-categoria').value;
             const resumen = document.getElementById('form-resumen').value;
 
-            // Formatear Fecha actual DD/MM/AAAA
+            // Formatear Fecha actual
             const hoy = new Date();
             const dia = String(hoy.getDate()).padStart(2, '0');
             const mes = String(hoy.getMonth() + 1).padStart(2, '0');
             const anio = hoy.getFullYear();
             const fechaString = `${dia}/${mes}/${anio}`;
 
-            // Auto-generación de Consecutivo (Sugerencia 1)
+            // Auto-generación de Consecutivo basada en tamaño real
             const correlativo = String(database.length + 1).padStart(3, '0');
             const nuevoConsecutivo = `SAC-REC-2026-${correlativo}`;
 
@@ -584,23 +729,32 @@
                 seguimientos: []
             };
 
-            database.push(nuevoCaso);
-            casoActivoId = nuevoConsecutivo;
-            activeCaseTag.textContent = nuevoConsecutivo;
-
-            // Limpiar formulario
-            document.getElementById('form-reclamo').reset();
-            
-            renderCasos();
+            // Guardar directamente en la nube
+            try {
+                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+                syncText.textContent = "Guardando...";
+                
+                const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', nuevoConsecutivo);
+                await window.FirebaseApp.setDoc(docRef, nuevoCaso);
+                
+                casoActivoId = nuevoConsecutivo;
+                activeCaseTag.textContent = nuevoConsecutivo;
+                
+                document.getElementById('form-reclamo').reset();
+            } catch (err) {
+                console.error("Error al guardar reclamo: ", err);
+                alert("Ocurrió un error al guardar en la base de datos.");
+            }
         }
 
-        // Añadir línea de seguimiento (Sección B)
-        function agregarSeguimiento(event) {
+        // Añadir línea de seguimiento (Sección B) y actualizar Firestore
+        async function agregarSeguimiento(event) {
             event.preventDefault();
 
             const caso = database.find(c => c.consecutivo === casoActivoId);
-            if (!caso) return;
+            if (!caso || !dbReference) return;
 
+            const rawDate = document.getElementById('seg-fecha').value;
             const acciones = document.getElementById('seg-acciones').value;
             const resultados = document.getElementById('seg-resultados').value;
             const notas = document.getElementById('seg-notas').value;
@@ -608,36 +762,66 @@
             const junta = document.getElementById('seg-junta').checked;
             const nuevoEstatus = document.getElementById('seg-estatus').value;
 
-            caso.seguimientos.push({
+            // Formatear fecha
+            let fechaUpdate = "--/--/----";
+            if (rawDate) {
+                const parts = rawDate.split('-');
+                if (parts.length === 3) {
+                    fechaUpdate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+            }
+
+            // Crear array de seguimientos localmente
+            const seguimientosActualizados = [...(caso.seguimientos || [])];
+            seguimientosActualizados.push({
+                fecha: fechaUpdate,
                 acciones,
                 resultados,
-                notas,
+                notes: notas, // Guardar bajo estándar para evitar colisiones
+                notas: notas,
                 comunicado,
                 junta
             });
 
-            caso.estatus = nuevoEstatus;
-            
-            // Si el estatus pasa a cerrado, registrar fecha
+            // Determinar fecha de cierre
+            let fechaCierreFinal = caso.fechaCierre;
             if (nuevoEstatus === 'Cerrado') {
-                const hoy = new Date();
-                const dia = String(hoy.getDate()).padStart(2, '0');
-                const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-                const anio = hoy.getFullYear();
-                caso.fechaCierre = `${dia}/${mes}/${anio}`;
+                fechaCierreFinal = fechaUpdate;
             } else {
-                caso.fechaCierre = "--/--/----";
+                fechaCierreFinal = "--/--/----";
             }
 
-            // Limpiar formulario seguimiento
-            document.getElementById('form-seguimiento').reset();
+            // Actualizar en Firestore (Actualización atómica del documento del caso)
+            try {
+                syncIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+                syncText.textContent = "Actualizando...";
 
-            renderCasos();
+                const docRef = window.FirebaseApp.doc(window.FirebaseApp.db, 'artifacts', window.FirebaseApp.appId, 'public', 'data', 'reclamos_ccp', casoActivoId);
+                await window.FirebaseApp.updateDoc(docRef, {
+                    seguimientos: seguimientosActualizados,
+                    estatus: nuevoEstatus,
+                    fechaCierre: fechaCierreFinal
+                });
+
+                document.getElementById('form-seguimiento').reset();
+                setTodayOnDatePicker();
+            } catch (err) {
+                console.error("Error al actualizar seguimiento: ", err);
+                alert("Ocurrió un error al registrar la actualización en la nube.");
+            }
         }
 
-        // Carga inicial
-        activeCaseTag.textContent = casoActivoId;
-        renderCasos();
+        // Utilidades
+        function setTodayOnDatePicker() {
+            const dateInput = document.getElementById('seg-fecha');
+            if (dateInput) {
+                const hoy = new Date();
+                const yyyy = hoy.getFullYear();
+                const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+                const dd = String(hoy.getDate()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+        }
     </script>
 </body>
 </html>
