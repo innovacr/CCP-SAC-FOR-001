@@ -99,7 +99,7 @@
                 <div class="space-y-2">
                     <label class="block text-[10px] font-semibold text-slate-400">URL de la Web App (Google Apps Script):</label>
                     <div class="flex gap-1.5">
-                        <input type="password" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
+                        <input type="password" id="gas-url-input" placeholder="https://.com/macros/s/.../exec" 
                                class="flex-1 text-xs bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 font-mono text-slate-300">
                         <button onclick="saveGasUrl()" class="bg-indigo-600 hover:bg-indigo-500 px-3 rounded text-white text-xs font-bold transition">
                             Conectar
@@ -436,7 +436,7 @@
             <div class="p-6 space-y-4 text-xs leading-relaxed text-slate-600">
                 <ol class="list-decimal pl-5 space-y-2">
                     <li>Ve a tu <strong>Google Drive</strong> y crea una nueva **Carpeta** o simplemente ve a tu cuenta de Google.</li>
-                    <li>Entra en <a href="https://script.google.com" target="_blank" class="text-indigo-600 hover:underline font-semibold">script.google.com</a> y haz clic en <strong>"Nuevo proyecto"</strong>.</li>
+                    <li>Entra en <a href="https://.com" target="_blank" class="text-indigo-600 hover:underline font-semibold">.com</a> y haz clic en <strong>"Nuevo proyecto"</strong>.</li>
                     <li>Sustituye todo el código por el siguiente bloque de **Google Apps Script** (que leerá y guardará tus datos en una hoja de Google Sheets automáticamente):</li>
                 </ol>
 
@@ -449,7 +449,7 @@
                     <pre class="overflow-x-auto max-h-52 pr-16" id="apps-script-code-block">
 /*
  * SCRIPT PARA SPREADSHEET GOOGLE DRIVE - CONTROL RECLAMOS CCP
- * Copia y pega esto íntegramente en script.google.com
+ * Copia y pega esto íntegramente en .com
  */
 function doGet(e) {
   var sheet = getOrCreateSheet();
@@ -573,7 +573,7 @@ function getOrCreateSheet() {
         // Array local que simula o replica la base de datos
         let database = [];
         let casoActivoId = null;
-        let gasUrl = localStorage.getItem('gas_web_app_url') || "https://script.google.com/macros/s/AKfycbw0jTBXC3WpYvWHQedTtKZJ3xle6f5CWulgdb6DgdRh9CC2kyPczmaYv67suH_PffuW/exec";
+        let gasUrl = localStorage.getItem('gas_web_app_url') || "https://script.google.com/macros/s/AKfycbyX2FaPNFG9I95o6trYRmjMmLbWn8_jZGUmXvERAm6ulJyYqt27rfxvZYi_u4Eizu5s/exec";
 
         // UI references
         const syncIndicator = document.getElementById('sync-indicator');
